@@ -1,0 +1,77 @@
+# US East (N. Virginia)
+# us-east-1
+# Amazon Machine Image   = ami-0230bd60aa48260c6
+# Instance type =  t2.micro
+# VPC = vpc-08199515cc12c93b8
+
+variable "aws_key_pair" {
+  default = "../aws/aws_keys/default-ec2-example.pem"
+
+}
+
+provider "aws" {
+  region = "us-east-1"
+  //version = "~> 2.46" (No longer necessary)
+}
+
+// http server -> SG
+// SG --> 80 TCP , 22 TCP , for anywhere CDIR ["0.0.0.0/0"] = access from anywhere on this address
+
+resource "aws_security_group" "http_server_sg" {
+  name   = "http_server_sg"
+  vpc_id = "vpc-08199515cc12c93b8"
+
+  ingress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+    description = "Allow incoming traffic on port 80"
+  }
+
+  ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+    description = "Allow incoming SSH traffic"
+  }
+
+  egress {
+    from_port        = 0
+    to_port          = 0
+    protocol         = "-1"
+    cidr_blocks      = ["0.0.0.0/0"]
+    ipv6_cidr_blocks = ["::/0"]
+  }
+
+  tags = {
+    name = "http-server-sg"
+  }
+}
+
+resource "aws_instance" "http_server" {
+  ami                    = "ami-0230bd60aa48260c6"                #important mandatory
+  key_name               = "default-ec2-example"                  #important mandatory
+  instance_type          = "t2.micro"                             #important mandatory
+  vpc_security_group_ids = [aws_security_group.http_server_sg.id] #important mandatory
+  subnet_id              = "subnet-09d552f9b16664633"             #important mandatory
+
+  connection {
+    type        = "ssh"
+    host        = self.public_ip
+    user        = "ec2-user"
+    private_key = file(var.aws_key_pair)
+
+  }
+
+  provisioner "remote-exec" {
+    inline = [
+      "sudo yum install httpd -y",                                                                  //install httpd
+      "sudo service httpd start",                                                                   //start
+      "echo Welcome page - Virtual server ${self.public_dns} | sudo  tee /var/www/html/indez.html", //copy
+    ]
+
+  }
+
+}
