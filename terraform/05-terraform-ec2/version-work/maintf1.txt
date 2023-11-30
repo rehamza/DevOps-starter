@@ -6,6 +6,7 @@
 
 variable "aws_key_pair" {
   default = "../aws/aws_keys/default-ec2-example.pem"
+
 }
 
 provider "aws" {
@@ -13,20 +14,12 @@ provider "aws" {
   //version = "~> 2.46" (No longer necessary)
 }
 
-
-
-// update code add dynamic VPC
-resource "aws_default_vpc" "default" {
-
-}
-
 // http server -> SG
 // SG --> 80 TCP , 22 TCP , for anywhere CDIR ["0.0.0.0/0"] = access from anywhere on this address
 
 resource "aws_security_group" "http_server_sg" {
-  name = "http_server_sg"
-  # vpc_id = "vpc-08199515cc12c93b8"
-  vpc_id = aws_default_vpc.default.id
+  name   = "http_server_sg"
+  vpc_id = "vpc-08199515cc12c93b8"
 
   ingress {
     from_port   = 80
@@ -58,13 +51,11 @@ resource "aws_security_group" "http_server_sg" {
 }
 
 resource "aws_instance" "http_server" {
-  # ami                    = "ami-0230bd60aa48260c6"                #important mandatory
-  ami                    = data.aws_ami.aws_linux_2_latest.id
+  ami                    = "ami-0230bd60aa48260c6"                #important mandatory
   key_name               = "default-ec2-example"                  #important mandatory
   instance_type          = "t2.micro"                             #important mandatory
   vpc_security_group_ids = [aws_security_group.http_server_sg.id] #important mandatory
-  # subnet_id              = "subnet-09d552f9b16664633"             #important mandatory
-  subnet_id = data.aws_subnets.default_subnets.ids[0]
+  subnet_id              = "subnet-09d552f9b16664633"             #important mandatory
 
   connection {
     type        = "ssh"
